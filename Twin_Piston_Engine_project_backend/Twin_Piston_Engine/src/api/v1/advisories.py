@@ -16,6 +16,7 @@ from src.api.dependencies import (
     get_explainability_engine,
     get_pipeline_adapter,
     get_replay_engine,
+    get_running_pipeline,
 )
 from src.api.v1.schemas import (
     AdvisoryResponse,
@@ -23,7 +24,11 @@ from src.api.v1.schemas import (
     DiagnosticQueryResponse,
     ExplanationResponse,
 )
-from src.l1_data.simulator.replay_and_whatif import PipelineReplayAdapter, ReplayEngine
+from src.l1_data.simulator.replay_and_whatif import (
+    PipelineReplayAdapter,
+    ReplayEngine,
+    RunningPipeline,
+)
 from src.l3_ml.advisory_explainability import (
     AdvisoryEngine,
     DiagnosticQueryService,
@@ -97,8 +102,23 @@ def get_advisory_by_id(
 )
 def get_explanation(
     explainer: ExplainabilityEngine = Depends(get_explainability_engine),
+    replay_engine: ReplayEngine = Depends(get_replay_engine),
+    pipeline: RunningPipeline = Depends(get_running_pipeline),
 ) -> ExplanationResponse:
-    exp = explainer.explain_fault(None)
+    # Explain the engine's actual latest state. This previously passed literal
+    # None for every argument, so the endpoint could only ever return the fixed
+    # "Classifier Status: UNKNOWN" baseline explanation regardless of health.
+    records = replay_engine.get_all_records()
+    latest = (
+        pipeline.advance(records, source_key=(id(replay_engine), replay_engine.scenario_id))
+        if records
+        else None
+    )
+    exp = explainer.explain_fault(
+        latest.fault_result if latest else None,
+        anomaly_result=latest.anomaly_result if latest else None,
+        residual_state=latest.residual_state if latest else None,
+    )
     return ExplanationResponse(
         explanation_id=exp.explanation_id,
         finding=exp.finding,
@@ -122,8 +142,27 @@ def get_explanation(
 def query_diagnostic(
     request: DiagnosticQueryRequest,
     query_service: DiagnosticQueryService = Depends(get_diagnostic_query_service),
+    replay_engine: ReplayEngine = Depends(get_replay_engine),
+    pipeline: RunningPipeline = Depends(get_running_pipeline),
 ) -> DiagnosticQueryResponse:
-    ans = query_service.answer_query(request.question_type)
+    # Hand the query service the current pipeline state. Calling it without state
+    # (as this route previously did) made every question fall through to the
+    # "unavailable" path, because answer_query() computes its answer from the
+    # HealthState / RULState / fault and anomaly results it is given.
+    records = replay_engine.get_all_records()
+    latest = (
+        pipeline.advance(records, source_key=(id(replay_engine), replay_engine.scenario_id))
+        if records
+        else None
+    )
+    ans = query_service.answer_query(
+        request.question_type,
+        health_state=latest.health_state if latest else None,
+        fault_result=latest.fault_result if latest else None,
+        anomaly_result=latest.anomaly_result if latest else None,
+        rul_state=latest.rul_state if latest else None,
+        mission_state=latest.mission_state if latest else None,
+    )
     return DiagnosticQueryResponse(
         question_type=ans.question_type,
         answer=ans.answer,

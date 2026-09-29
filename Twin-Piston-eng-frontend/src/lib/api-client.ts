@@ -64,7 +64,13 @@ export const apiClient = {
   // Advisories, Explanations & Operator Q&A
   getAdvisories: () => fetchJSON<AdvisoryResponse[]>("/advisories"),
   getAdvisoryById: (id: string) => fetchJSON<AdvisoryResponse>(`/advisories/${id}`),
-  getExplanations: () => fetchJSON<ExplanationResponse[]>("/explanations"),
+  // The API returns a single ExplanationResponse object, not an array (see backend
+  // src/api/v1/advisories.py, which declares response_model=ExplanationResponse).
+  // Normalise here so every caller can treat explanations as a list.
+  getExplanations: async (): Promise<ExplanationResponse[]> => {
+    const res = await fetchJSON<ExplanationResponse | ExplanationResponse[]>("/explanations");
+    return Array.isArray(res) ? res : [res];
+  },
   queryDiagnostics: (query: DiagnosticQueryRequest) =>
     fetchJSON<DiagnosticQueryResponse>("/diagnostic/query", {
       method: "POST",

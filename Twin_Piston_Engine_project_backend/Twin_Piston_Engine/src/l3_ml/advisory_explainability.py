@@ -284,7 +284,10 @@ class ExplainabilityEngine:
         evidence_items = self.extract_evidence_items(residual_state=residual_state, anomaly_result=anomaly_result, fault_result=fault_result)
 
         if not fault_result or fault_result.status != InferenceStatus.SUCCESS:
-            status_desc = str(fault_result.status) if fault_result else "UNKNOWN"
+            # str() on the enum renders "InferenceStatus.MODEL_UNAVAILABLE" into
+            # operator-facing prose; use the bare value instead.
+            _status = fault_result.status if fault_result else None
+            status_desc = getattr(_status, "value", None) or "UNKNOWN"
             return Explanation(
                 explanation_id=f"exp_fault_{int(ts.timestamp())}",
                 finding="No definitive fault detected (Classifier Status: " + status_desc + ").",
@@ -434,6 +437,9 @@ class ExplainabilityEngine:
         risk_score = getattr(mission_state, "risk_score", 0.0)
         risk_level = getattr(mission_state, "risk_level", "LOW")
         phase = getattr(mission_state, "flight_phase", "UNKNOWN")
+        # Same as above: keep the enum class name (FlightPhase.CRUISE) out of the
+        # explanation text and report just CRUISE.
+        phase = getattr(phase, "value", None) or "UNKNOWN"
 
         return Explanation(
             explanation_id=f"exp_risk_{int(ts.timestamp())}",

@@ -33,7 +33,7 @@ services:
       APP_DATABASE_URL: ${APP_DATABASE_URL:-sqlite+aiosqlite:///./data/digital_twin.db}
       APP_TELEMETRY_SOURCE: ${APP_TELEMETRY_SOURCE:-simulator}
       APP_MODEL_DIR: ${APP_MODEL_DIR:-models/}
-      APP_CORS_ALLOW_ORIGINS: ${APP_CORS_ALLOW_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000}
+      APP_CORS_ALLOW_ORIGINS: ${APP_CORS_ALLOW_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8080,http://127.0.0.1:8080,http://localhost:8000,http://127.0.0.1:8000}
       # Empty by default; required once APP_APP_ENV=production. Interpolated
       # from the root .env, which is what turns it into a real process
       # environment variable (the app reads os.environ directly).

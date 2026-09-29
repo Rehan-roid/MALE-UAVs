@@ -18,8 +18,10 @@ export function AdvisoriesPanel() {
           apiClient.getAdvisories().catch(() => []),
           apiClient.getExplanations().catch(() => []),
         ]);
-        setAdvisories(advs);
-        setExplanations(expls);
+        // Defensive: a non-array response would otherwise throw during render
+        // (`explanations.map is not a function`) and take down the whole app.
+        setAdvisories(Array.isArray(advs) ? advs : [advs]);
+        setExplanations(Array.isArray(expls) ? expls : [expls]);
       } finally {
         setLoading(false);
       }
@@ -34,12 +36,20 @@ export function AdvisoriesPanel() {
     try {
       const res = await apiClient.queryDiagnostics({ question_type: queryInput });
       setQueryResult(res);
-    } catch (err: any) {
+    } catch (err) {
+      // Report the actual cause. A request blocked by CORS and a genuinely
+      // offline backend both land here, and they are fixed differently, so the
+      // previous fixed "system offline" wording sent operators the wrong way.
+      const detail = err instanceof Error ? err.message : String(err);
+      const neverReachedApi =
+        detail.includes("Failed to fetch") || detail.includes("NetworkError");
       setQueryResult({
         question_type: queryInput,
-        answer: "Query error: Could not reach diagnostic reasoning engine.",
+        answer: `Query failed: ${detail}`,
         evidence: [],
-        limitations: "System offline or backend unavailable.",
+        limitations: neverReachedApi
+          ? "The request never reached the API. Either the backend is not running, or this page's origin is not in APP_CORS_ALLOW_ORIGINS — a browser blocks both cases identically."
+          : "The API rejected the query; see the error above.",
         quality: 0,
         provenance: "DERIVED",
         timestamp: new Date().toISOString(),
