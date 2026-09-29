@@ -102,7 +102,8 @@ docker build \
 
 ### Production checklist
 
-1. `export TELEMETRY_SECRET_KEY=$(openssl rand -hex 32)` — required, see §5.
+1. Create the root `.env` and put a real `TELEMETRY_SECRET_KEY` in it —
+   required, see §5.1.
 2. Set `APP_APP_ENV=production`. Startup **fails fast** if the secret above is
    missing.
 3. Set `APP_CORS_ALLOW_ORIGINS` to the real UI origin (comma-separated).
@@ -142,6 +143,35 @@ so local URLs can never leak into a production bundle.
 | `APP_TELEMETRY_SOURCE` | `simulator` | `simulator` / `csv_replay` / `live` |
 | `APP_MODEL_DIR` | `models/` | ML artifact directory |
 | `TELEMETRY_SECRET_KEY` | *(unset)* | HMAC secret — **name is fixed, no `APP_` prefix** |
+
+### 5.1 Stack secrets live in the **root** `.env`
+
+The root `.env` is git-ignored and is the only place a secret belongs. Start
+from the template and generate a key:
+
+```bash
+cp .env.example .env
+printf 'TELEMETRY_SECRET_KEY=%s\n' "$(openssl rand -hex 32)"
+```
+
+Put that line in `Engine/.env`. `docker compose up` interpolates it into the
+container's `environment:` block, which is a genuine process environment
+variable — and that is what the code actually reads.
+
+| Secret | Needed for | If unset |
+| --- | --- | --- |
+| `TELEMETRY_SECRET_KEY` | HMAC auth of ingested telemetry | Startup **aborts** when `APP_APP_ENV=production` |
+| `TWIN_API_BEARER_TOKEN` | `POST /api/v1/ml/rollback` | Endpoint returns **503** (fails closed) |
+
+Why not the app-level `.env`? Because it genuinely does not work. That file is
+read by pydantic into the settings object, but `TELEMETRY_SECRET_KEY` is fetched
+with `os.environ.get(...)` in two places ([config.py](Twin_Piston_Engine_project_backend/Twin_Piston_Engine/src/core/config.py)
+and [telemetry_security.py](Twin_Piston_Engine_project_backend/Twin_Piston_Engine/src/l1_data/telemetry_security.py))
+and nothing in the project calls `load_dotenv()`. A key there is silently inert.
+
+**This repository is public.** Committing a real key lets anyone sign forged
+telemetry past the L1 integrity checks, which is the one guarantee that layer
+exists to provide. Keep it in `.env` only.
 
 ### ⚠️ Two naming rules that bite
 

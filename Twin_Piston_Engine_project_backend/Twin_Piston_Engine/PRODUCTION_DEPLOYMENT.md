@@ -31,7 +31,9 @@ Configure operational settings using environment variables (see `.env.example`):
 | `TELEMETRY_SOURCE` | `simulator` | Telemetry input source (`simulator`, `csv_replay`, `live`). |
 | `MODEL_DIR` | `models/` | Directory path for ML model `.pkl` / `.onnx` artifacts. |
 
-> **Security Note**: Never commit actual passwords, API keys, or private HMAC secret keys to version control. Set `HMAC_SECRET_KEY` in environment variables or container secret mounts.
+> **Security Note**: Never commit actual passwords, API keys, or private HMAC secret keys to version control. Set `TELEMETRY_SECRET_KEY` in environment variables or container secret mounts. (Earlier revisions of this document named it `HMAC_SECRET_KEY`; no such variable exists in the codebase, and setting it does nothing.)
+>
+> The value must be a **real process environment variable**: the startup gate in `src/core/config.py` and `PacketSigner` in `src/l1_data/telemetry_security.py` both read it with `os.environ.get(...)`, and nothing calls `load_dotenv()`. Placing it in a `.env` file alone has no effect — use the orchestrator's environment, a container secret mount, or the root `.env` consumed by Docker Compose interpolation.
 
 ---
 
