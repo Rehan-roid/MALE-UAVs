@@ -21,7 +21,11 @@ ENV/
 *~
 
 # --- Environment ---
-.env
+# NOTE: .env is intentionally NOT ignored. It is committed with non-secret
+# local development defaults so a fresh clone runs without manual setup, and so
+# deployment images are reproducible. Never place a real HMAC secret in it:
+# TELEMETRY_SECRET_KEY must be injected as a genuine process environment
+# variable at runtime (see .env.example).
 *.env.local
 
 # --- Database ---

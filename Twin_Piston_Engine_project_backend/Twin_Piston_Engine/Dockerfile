@@ -11,9 +11,10 @@ WORKDIR /app
 # Install uv for fast dependency resolution
 RUN pip install --no-cache-dir uv
 
-# Copy dependency specification first for layer caching
-COPY pyproject.toml ./
-RUN uv sync --no-dev
+# Copy dependency specification first for layer caching. uv.lock is included so
+# the image resolves the exact tested dependency set instead of re-resolving.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
 # Copy source code and application files
 COPY src/ src/

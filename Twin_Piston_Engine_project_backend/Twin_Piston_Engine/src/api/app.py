@@ -50,15 +50,17 @@ def create_app(settings: AppSettings | None = None) -> FastAPI:
 
     # Configurable CORS Middleware
     allowed_origins = [
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
+        origin.strip() for origin in app_settings.cors_allow_origins.split(",") if origin.strip()
     ]
+    # Browsers reject a wildcard origin on a credentialed response, so a "*"
+    # allowlist (development convenience) has to drop credentials.
+    allow_any_origin = "*" in allowed_origins
+    if allow_any_origin:
+        logger.warning("CORS is configured to allow any origin ('*'); credentials are disabled.")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=allowed_origins,
-        allow_credentials=True,
+        allow_credentials=not allow_any_origin,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )

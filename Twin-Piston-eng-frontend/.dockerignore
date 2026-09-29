@@ -1,0 +1,27 @@
+# Keep the build context small and the image deterministic.
+
+node_modules
+.output
+.wrangler
+.tanstack
+dist
+dist-ssr
+.vinxi
+.nitro
+
+# Excluded on purpose: Vite would otherwise load this file during `npm run
+# build` and bake local development URLs into the image. The Dockerfile drives
+# VITE_* purely through build arguments instead.
+.env
+.env.local
+.env.*.local
+
+.git
+.gitignore
+.github
+
+Dockerfile
+.dockerignore
+*.log
+.vscode
+.idea

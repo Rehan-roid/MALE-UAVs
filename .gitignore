@@ -14,7 +14,13 @@ build/
 *.egg-info/
 
 # Environment & OS
+# Two application .env files ARE committed on purpose (non-secret development
+# defaults) so the stack runs after a clone and images build reproducibly.
+# Every other .env anywhere in the tree stays ignored, so a stray file holding
+# real secrets cannot be committed by accident.
 .env
 .env.local
+!/Twin-Piston-eng-frontend/.env
+!/Twin_Piston_Engine_project_backend/Twin_Piston_Engine/.env
 .DS_Store
 Thumbs.db

@@ -1,0 +1,62 @@
+# =============================================================================
+# Aero Piston Engine Digital Twin — full stack (API + UI)
+#
+#   docker compose up --build          # dev/parity stack on :3000 and :8000
+#
+# The UI is opened by a BROWSER ON THE HOST, so every VITE_* value must be a URL
+# the browser can reach (localhost:8000), never a container-internal hostname.
+#
+# Going to production:
+#   1. Export a real secret:  export TELEMETRY_SECRET_KEY=$(openssl rand -hex 32)
+#   2. Set APP_APP_ENV=production — startup then FAILS unless the secret above is
+#      present as a genuine process variable (a .env entry does not count).
+#   3. Point VITE_API_BASE_URL / VITE_WS_URL at the public API and replace
+#      localhost in APP_CORS_ALLOW_ORIGINS with the public UI origin.
+#   4. Rebuild the web image: VITE_* is inlined at build time, so changing it
+#      without --build has no effect.
+# =============================================================================
+
+name: aero-piston-digital-twin
+
+services:
+  api:
+    build:
+      context: ./Twin_Piston_Engine_project_backend/Twin_Piston_Engine
+      dockerfile: Dockerfile
+    image: piston-engine-twin-api
+    container_name: piston-engine-twin-api
+    environment:
+      # Values here become real process environment variables.
+      APP_APP_ENV: ${APP_APP_ENV:-development}
+      APP_LOG_LEVEL: ${APP_LOG_LEVEL:-INFO}
+      APP_CONFIG_PATH: ${APP_CONFIG_PATH:-config/default.yaml}
+      APP_DATABASE_URL: ${APP_DATABASE_URL:-sqlite+aiosqlite:///./data/digital_twin.db}
+      APP_TELEMETRY_SOURCE: ${APP_TELEMETRY_SOURCE:-simulator}
+      APP_MODEL_DIR: ${APP_MODEL_DIR:-models/}
+      APP_CORS_ALLOW_ORIGINS: ${APP_CORS_ALLOW_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000,http://127.0.0.1:8000}
+      # Empty by default; required once APP_APP_ENV=production.
+      TELEMETRY_SECRET_KEY: ${TELEMETRY_SECRET_KEY:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - api-data:/app/data
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./Twin-Piston-eng-frontend
+      dockerfile: Dockerfile
+      args:
+        # Inlined into the client bundle at build time — these are baked in.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
+        VITE_WS_URL: ${VITE_WS_URL:-ws://localhost:8000/api/v1/ws/engine}
+    image: piston-engine-twin-web
+    container_name: piston-engine-twin-web
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  api-data:

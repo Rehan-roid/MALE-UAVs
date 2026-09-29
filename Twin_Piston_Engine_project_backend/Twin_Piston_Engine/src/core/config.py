@@ -1081,6 +1081,14 @@ class AppSettings(BaseSettings):
     telemetry_source: str = "simulator"
     csv_replay_path: str = "data/sample_flights/"
     model_dir: str = "models/"
+    # Comma-separated browser origins permitted by the CORS middleware.
+    # Defaults cover the local development UI/API ports; deployments must set
+    # APP_CORS_ALLOW_ORIGINS to the host that actually serves the frontend.
+    # "*" permits any origin (development only; credentials are then disabled).
+    cors_allow_origins: str = (
+        "http://localhost:3000,http://localhost:8000,"
+        "http://127.0.0.1:3000,http://127.0.0.1:8000"
+    )
 
 
 def _load_yaml_config(path: str | Path) -> dict[str, Any]:
